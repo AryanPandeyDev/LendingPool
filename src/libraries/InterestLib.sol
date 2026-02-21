@@ -50,7 +50,7 @@ library InterestLib {
         return PRECISION + ((lenderRate * timeElapsedSinceUpdate) / YEAR);
     }
 
-    function calculateInterestAccured(
+    function calculateInterestAccrued(
         uint256 totalBorrowed,
         uint256 interestRate,
         uint256 timeElapsedSinceUpdate

@@ -158,9 +158,9 @@ contract LendingPool is ReentrancyGuard {
     function depositToken(
         uint256 amount
     ) external moreThanZero(amount) nonReentrant {
-        uint256 interestAccured = _updateLiquidityIndex();
+        uint256 interestAccrued = _updateLiquidityIndex();
         s_lender[msg.sender].amount = _getUpdatedLenderDeposit() + amount;
-        s_totalLiquidity += interestAccured + amount;
+        s_totalLiquidity += interestAccrued + amount;
         emit TokenDeposited(msg.sender, amount);
         bool success = IERC20(i_underlyingAssetAddress).transferFrom(
             msg.sender,
@@ -175,9 +175,9 @@ contract LendingPool is ReentrancyGuard {
     function withdrawToken(
         uint256 amount
     ) external moreThanZero(amount) liquidityAvailable(amount) nonReentrant {
-        uint256 interestAccured = _updateLiquidityIndex();
+        uint256 interestAccrued = _updateLiquidityIndex();
         s_lender[msg.sender].amount = _getUpdatedLenderDeposit() - amount;
-        s_totalLiquidity += interestAccured - amount;
+        s_totalLiquidity += interestAccrued - amount;
         emit TokenWithdrawn(msg.sender, amount);
         bool success = IERC20(i_underlyingAssetAddress).transferFrom(
             address(this),
@@ -193,7 +193,7 @@ contract LendingPool is ReentrancyGuard {
         address user,
         uint256 debtToCover
     ) external moreThanZero(debtToCover) nonReentrant {
-        uint256 interestAccured = _updateBorrowerIndex();
+        uint256 interestAccrued = _updateBorrowerIndex();
         BorrowerBalance storage borrower = s_borrower[user];
         borrower.debt = _getUpdatedBorrowerDebt(user);
         uint256 startingHealthFactor = _healthFactor(user, borrower.debt);
@@ -207,7 +207,7 @@ contract LendingPool is ReentrancyGuard {
             bonusCollateral;
         _redeemCollateral(totalCollateralToRedeem, user, msg.sender);
         _repayDebt(debtToCover, user, msg.sender);
-        s_totalBorrowed += interestAccured - debtToCover;
+        s_totalBorrowed += interestAccrued - debtToCover;
         uint256 endingHealthFactor = _healthFactor(user, borrower.debt);
         if (endingHealthFactor <= startingHealthFactor) {
             revert LendingPool__HealthFactorNotImproved();
@@ -251,10 +251,10 @@ contract LendingPool is ReentrancyGuard {
     ///////////////////
 
     function getLiquidityAvailable() public view returns (uint256) {
-        uint256 availableLiquidty = IERC20(i_underlyingAssetAddress).balanceOf(
+        uint256 availableLiquidity = IERC20(i_underlyingAssetAddress).balanceOf(
             address(this)
         ) - s_protocolReserve;
-        return availableLiquidty;
+        return availableLiquidity;
     }
 
     function depositCollateral(
@@ -275,11 +275,11 @@ contract LendingPool is ReentrancyGuard {
     function borrowToken(
         uint256 amount
     ) public moreThanZero(amount) liquidityAvailable(amount) nonReentrant {
-        uint256 interestAccured = _updateBorrowerIndex();
+        uint256 interestAccrued = _updateBorrowerIndex();
         s_borrower[msg.sender].debt =
             _getUpdatedBorrowerDebt(msg.sender) +
             amount;
-        s_totalBorrowed += interestAccured + amount;
+        s_totalBorrowed += interestAccrued + amount;
         _revertIfHealthFactorIsBroken(msg.sender);
         emit TokenBorrowed(msg.sender, amount);
         bool success = IERC20(i_underlyingAssetAddress).transferFrom(
@@ -295,8 +295,8 @@ contract LendingPool is ReentrancyGuard {
     function repayDebt(
         uint256 amount
     ) public moreThanZero(amount) nonReentrant {
-        uint256 interestAccured = _updateBorrowerIndex();
-        s_totalBorrowed += interestAccured - amount;
+        uint256 interestAccrued = _updateBorrowerIndex();
+        s_totalBorrowed += interestAccrued - amount;
         _repayDebt(amount, msg.sender, msg.sender);
     }
 
@@ -451,7 +451,7 @@ contract LendingPool is ReentrancyGuard {
         return updatedBorrowerDebt;
     }
 
-    function _updateBorrowerIndex() internal returns (uint256 interestAccured) {
+    function _updateBorrowerIndex() internal returns (uint256 interestAccrued) {
         InterestIndex storage idx = s_borrowerIndex;
 
         uint256 dt = block.timestamp - idx.lastUpdate;
@@ -460,13 +460,13 @@ contract LendingPool is ReentrancyGuard {
         uint256 borrowRate = _calculateBorrowRate();
 
         if (borrowRate != 0) {
-            interestAccured = InterestLib.calculateInterestAccured(
+            interestAccrued = InterestLib.calculateInterestAccrued(
                 s_totalBorrowed,
                 borrowRate,
                 dt
             );
             s_protocolReserve +=
-                (interestAccured * i_reserveFactor) /
+                (interestAccrued * i_reserveFactor) /
                 PRECISION;
 
             uint256 factor = InterestLib.calculateIndexUpdate(dt, borrowRate);
@@ -492,7 +492,7 @@ contract LendingPool is ReentrancyGuard {
 
     function _updateLiquidityIndex()
         internal
-        returns (uint256 lenderInterestAccured)
+        returns (uint256 lenderInterestAccrued)
     {
         InterestIndex storage idx = s_liquidityIndex;
 
@@ -502,7 +502,7 @@ contract LendingPool is ReentrancyGuard {
         uint256 lenderRate = _calculateLenderRate();
 
         if (lenderRate != 0) {
-            lenderInterestAccured = InterestLib.calculateInterestAccured(
+            lenderInterestAccrued = InterestLib.calculateInterestAccrued(
                 s_totalLiquidity,
                 lenderRate,
                 dt
@@ -530,7 +530,7 @@ contract LendingPool is ReentrancyGuard {
         if (borrowDt > 0 && totalBorrowed > 0) {
             uint256 borrowRate = _calculateBorrowRate();
             if (borrowRate > 0) {
-                uint256 interestAccrued = InterestLib.calculateInterestAccured(
+                uint256 interestAccrued = InterestLib.calculateInterestAccrued(
                     totalBorrowed,
                     borrowRate,
                     borrowDt
@@ -543,7 +543,7 @@ contract LendingPool is ReentrancyGuard {
         if (lenderDt > 0 && totalLiquidity > 0) {
             uint256 lenderRate = _calculateLenderRate();
             if (lenderRate > 0) {
-                uint256 lenderInterest = InterestLib.calculateInterestAccured(
+                uint256 lenderInterest = InterestLib.calculateInterestAccrued(
                     totalLiquidity,
                     lenderRate,
                     lenderDt

@@ -322,10 +322,10 @@ contract TestInterestLib is Test {
         assertGe(factor, PRECISION);
     }
 
-    // ─── calculateInterestAccured ───────────────────────────────────────
+    // ─── calculateInterestAccrued ────────────────────────────────────────
 
-    function test_calculateInterestAccured_zeroTime() public pure {
-        uint256 interest = InterestLib.calculateInterestAccured(
+    function test_calculateInterestAccrued_zeroTime() public pure {
+        uint256 interest = InterestLib.calculateInterestAccrued(
             1000e18, // totalBorrowed
             10e16, // 10% rate
             0 // no time elapsed
@@ -333,8 +333,8 @@ contract TestInterestLib is Test {
         assertEq(interest, 0);
     }
 
-    function test_calculateInterestAccured_zeroRate() public pure {
-        uint256 interest = InterestLib.calculateInterestAccured(
+    function test_calculateInterestAccrued_zeroRate() public pure {
+        uint256 interest = InterestLib.calculateInterestAccrued(
             1000e18,
             0, // 0% rate
             365 days
@@ -342,8 +342,8 @@ contract TestInterestLib is Test {
         assertEq(interest, 0);
     }
 
-    function test_calculateInterestAccured_zeroBorrowed() public pure {
-        uint256 interest = InterestLib.calculateInterestAccured(
+    function test_calculateInterestAccrued_zeroBorrowed() public pure {
+        uint256 interest = InterestLib.calculateInterestAccrued(
             0, // nothing borrowed
             10e16,
             365 days
@@ -351,10 +351,10 @@ contract TestInterestLib is Test {
         assertEq(interest, 0);
     }
 
-    function test_calculateInterestAccured_oneYear() public pure {
+    function test_calculateInterestAccrued_oneYear() public pure {
         uint256 totalBorrowed = 1000e18;
         uint256 rate = 10e16; // 10%
-        uint256 interest = InterestLib.calculateInterestAccured(
+        uint256 interest = InterestLib.calculateInterestAccrued(
             totalBorrowed,
             rate,
             365 days
@@ -363,11 +363,11 @@ contract TestInterestLib is Test {
         assertEq(interest, 100e18);
     }
 
-    function test_calculateInterestAccured_halfYear() public pure {
+    function test_calculateInterestAccrued_halfYear() public pure {
         uint256 totalBorrowed = 1000e18;
         uint256 rate = 10e16; // 10%
         uint256 halfYear = 365 days / 2;
-        uint256 interest = InterestLib.calculateInterestAccured(
+        uint256 interest = InterestLib.calculateInterestAccrued(
             totalBorrowed,
             rate,
             halfYear
@@ -376,10 +376,10 @@ contract TestInterestLib is Test {
         assertEq(interest, 50e18);
     }
 
-    function test_calculateInterestAccured_oneDay() public pure {
+    function test_calculateInterestAccrued_oneDay() public pure {
         uint256 totalBorrowed = 365e18; // 365 tokens for easy math
         uint256 rate = PRECISION; // 100% APR
-        uint256 interest = InterestLib.calculateInterestAccured(
+        uint256 interest = InterestLib.calculateInterestAccrued(
             totalBorrowed,
             rate,
             1 days
@@ -388,10 +388,10 @@ contract TestInterestLib is Test {
         assertEq(interest, 1e18);
     }
 
-    function test_calculateInterestAccured_smallAmount() public pure {
+    function test_calculateInterestAccrued_smallAmount() public pure {
         uint256 totalBorrowed = 1e18; // 1 token
         uint256 rate = 5e16; // 5%
-        uint256 interest = InterestLib.calculateInterestAccured(
+        uint256 interest = InterestLib.calculateInterestAccrued(
             totalBorrowed,
             rate,
             365 days
@@ -400,7 +400,7 @@ contract TestInterestLib is Test {
         assertEq(interest, 5e16);
     }
 
-    function testFuzz_calculateInterestAccured(
+    function testFuzz_calculateInterestAccrued(
         uint256 totalBorrowed,
         uint256 rate,
         uint256 timeElapsed
@@ -410,7 +410,7 @@ contract TestInterestLib is Test {
         rate = bound(rate, 0, 10e18); // up to 1000% APR
         timeElapsed = bound(timeElapsed, 0, 365 days * 10);
 
-        uint256 interest = InterestLib.calculateInterestAccured(
+        uint256 interest = InterestLib.calculateInterestAccrued(
             totalBorrowed,
             rate,
             timeElapsed

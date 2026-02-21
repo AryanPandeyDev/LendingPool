@@ -91,7 +91,7 @@ contract TestLendingPool is Test {
         depositedToken
     {}
 
-    function testWithdrawToken__TotalBorrowedIncreaseWithInterestAccured()
+    function testWithdrawToken__TotalBorrowedIncreaseWithInterestAccrued()
         external
         depositedToken
     {
@@ -130,4 +130,8 @@ contract TestLendingPool is Test {
     function testLiquidation__RevertsIfHealthFactorNotImproved() external {}
 
     function testLiquidation__RevertsIfHealthFactorOk() external {}
+
+    function testDepositCollateralAndBorrowToken() external {}
+
+    function testRepayDebtAndRedeemCollateral() external {}
 }
