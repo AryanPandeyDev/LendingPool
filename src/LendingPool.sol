@@ -25,6 +25,7 @@
 pragma solidity ^0.8.24;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {console} from "lib/forge-std/src/console.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {InterestLib} from "./libraries/InterestLib.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
@@ -177,10 +178,9 @@ contract LendingPool is ReentrancyGuard {
     ) external moreThanZero(amount) liquidityAvailable(amount) nonReentrant {
         uint256 interestAccrued = _updateLiquidityIndex();
         s_lender[msg.sender].amount = _getUpdatedLenderDeposit() - amount;
-        s_totalLiquidity += interestAccrued - amount;
+        s_totalLiquidity = (s_totalLiquidity + interestAccrued) - amount;
         emit TokenWithdrawn(msg.sender, amount);
-        bool success = IERC20(i_underlyingAssetAddress).transferFrom(
-            address(this),
+        bool success = IERC20(i_underlyingAssetAddress).transfer(
             msg.sender,
             amount
         );
@@ -196,18 +196,19 @@ contract LendingPool is ReentrancyGuard {
         uint256 interestAccrued = _updateBorrowerIndex();
         BorrowerBalance storage borrower = s_borrower[user];
         borrower.debt = _getUpdatedBorrowerDebt(user);
+
         uint256 startingHealthFactor = _healthFactor(user, borrower.debt);
         if (startingHealthFactor >= MIN_HEALTH_FACTOR) {
             revert LendingPool__HealthFactorOk();
         }
-        uint256 tokenAmountFromDebtCovered = getUsdValue(debtToCover);
+        uint256 tokenAmountFromDebtCovered = getTokenAmountFromUsd(debtToCover);
         uint256 bonusCollateral = (tokenAmountFromDebtCovered *
             LIQUIDATION_BONUS) / LIQUIDATION_PRECISION;
         uint256 totalCollateralToRedeem = tokenAmountFromDebtCovered +
             bonusCollateral;
         _redeemCollateral(totalCollateralToRedeem, user, msg.sender);
         _repayDebt(debtToCover, user, msg.sender);
-        s_totalBorrowed += interestAccrued - debtToCover;
+        s_totalBorrowed = (s_totalBorrowed + interestAccrued) - debtToCover;
         uint256 endingHealthFactor = _healthFactor(user, borrower.debt);
         if (endingHealthFactor <= startingHealthFactor) {
             revert LendingPool__HealthFactorNotImproved();
@@ -236,11 +237,7 @@ contract LendingPool is ReentrancyGuard {
         uint256 amount
     ) external onlyProtocolOperator moreThanZero(amount) nonReentrant {
         s_protocolReserve -= amount;
-        bool success = IERC20(i_underlyingAssetAddress).transferFrom(
-            address(this),
-            to,
-            amount
-        );
+        bool success = IERC20(i_underlyingAssetAddress).transfer(to, amount);
         if (!success) {
             revert LendingPool__TransferFailed();
         }
@@ -249,6 +246,18 @@ contract LendingPool is ReentrancyGuard {
     ///////////////////
     // Public Functions
     ///////////////////
+
+    function getTokenAmountFromUsd(
+        uint256 usdAmount
+    ) public view returns (uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(
+            i_collateralPriceFeedAddress
+        );
+        (, int256 price, , , ) = priceFeed.staleCheckLatestRoundData();
+        return
+            (usdAmount * PRECISION) /
+            (uint256(price) * ADDITIONAL_FEED_PRECISION);
+    }
 
     function getLiquidityAvailable() public view returns (uint256) {
         uint256 availableLiquidity = IERC20(i_underlyingAssetAddress).balanceOf(
@@ -282,8 +291,7 @@ contract LendingPool is ReentrancyGuard {
         s_totalBorrowed += interestAccrued + amount;
         _revertIfHealthFactorIsBroken(msg.sender);
         emit TokenBorrowed(msg.sender, amount);
-        bool success = IERC20(i_underlyingAssetAddress).transferFrom(
-            address(this),
+        bool success = IERC20(i_underlyingAssetAddress).transfer(
             msg.sender,
             amount
         );
@@ -296,14 +304,14 @@ contract LendingPool is ReentrancyGuard {
         uint256 amount
     ) public moreThanZero(amount) nonReentrant {
         uint256 interestAccrued = _updateBorrowerIndex();
-        s_totalBorrowed += interestAccrued - amount;
+        s_totalBorrowed = (s_totalBorrowed + interestAccrued) - amount;
         _repayDebt(amount, msg.sender, msg.sender);
     }
 
     function redeemCollateral(
         uint256 amount
     ) public moreThanZero(amount) nonReentrant {
-        _redeemCollateral(amount, address(this), msg.sender);
+        _redeemCollateral(amount, msg.sender, msg.sender);
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
@@ -412,11 +420,7 @@ contract LendingPool is ReentrancyGuard {
     ) private {
         s_borrower[from].collateral -= amount;
         emit CollateralRedeemed(from, to, amount);
-        bool success = IERC20(i_collateralAddress).transferFrom(
-            from,
-            to,
-            amount
-        );
+        bool success = IERC20(i_collateralAddress).transfer(to, amount);
         if (!success) {
             revert LendingPool__TransferFailed();
         }
@@ -596,8 +600,14 @@ contract LendingPool is ReentrancyGuard {
         BorrowerBalance storage borrower = s_borrower[user];
         uint256 collateralValueInUsd = getUsdValue(borrower.collateral);
         if (debt == 0) return type(uint256).max;
+        console.log("Collateral value in USD:", collateralValueInUsd);
+        console.log("Debt:", debt);
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd *
             LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        console.log(
+            "Collateral adjusted for liquidation threshold:",
+            collateralAdjustedForThreshold
+        );
         return (collateralAdjustedForThreshold * PRECISION) / debt;
     }
 
