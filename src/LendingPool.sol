@@ -25,7 +25,6 @@
 pragma solidity ^0.8.24;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {console} from "lib/forge-std/src/console.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {InterestLib} from "./libraries/InterestLib.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
@@ -36,7 +35,6 @@ contract LendingPool is ReentrancyGuard {
     error LendingPool__AmountMustBeMoreThanZero();
     error LendingPool__TransferFailed();
     error LendingPool__NotEnoughLiquidityAvailable();
-    error LendingPool__NotEnoughCollateral();
     error LendingPool__HealthFactorBroken(uint256 healthFactor);
     error LendingPool__HealthFactorOk();
     error LendingPool__HealthFactorNotImproved();
@@ -600,14 +598,8 @@ contract LendingPool is ReentrancyGuard {
         BorrowerBalance storage borrower = s_borrower[user];
         uint256 collateralValueInUsd = getUsdValue(borrower.collateral);
         if (debt == 0) return type(uint256).max;
-        console.log("Collateral value in USD:", collateralValueInUsd);
-        console.log("Debt:", debt);
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd *
             LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-        console.log(
-            "Collateral adjusted for liquidation threshold:",
-            collateralAdjustedForThreshold
-        );
         return (collateralAdjustedForThreshold * PRECISION) / debt;
     }
 

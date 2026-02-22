@@ -8,6 +8,10 @@ import {HelperConfig} from "./HelperConfig.s.sol";
 
 contract DeployLendingPool is Script {
     function run() external returns (LendingPool, HelperConfig) {
+        return deploy(msg.sender);
+    }
+
+    function deploy(address admin) public returns (LendingPool, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig();
 
         (
@@ -21,7 +25,7 @@ contract DeployLendingPool is Script {
             address priceFeedAddress
         ) = helperConfig.activeConfig();
 
-        vm.startBroadcast();
+        vm.startBroadcast(admin);
         LendingPool lendingPool = new LendingPool(
             underlyingAssetAddress,
             collateralAddress,
